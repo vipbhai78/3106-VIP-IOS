@@ -386,20 +386,7 @@ private struct VIPLoginPreviewView: View {
                     .tracking(2)
                     .foregroundStyle(.white.opacity(0.65))
 
-                if isCheckingSavedKey {
-                    VStack(spacing: 12) {
-                        ProgressView().tint(.white).scaleEffect(1.2)
-                        Text("VERIFYING LICENSE...")
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
-                        Text("Please wait a moment")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    .padding(24)
-                    .frame(maxWidth: .infinity)
-                    .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
-                } else if isMaintenanceEnabled {
+                if isMaintenanceEnabled {
                     VStack(spacing: 12) {
                         Image(systemName: "wrench.and.screwdriver.fill")
                             .font(.system(size: 34))
@@ -415,6 +402,8 @@ private struct VIPLoginPreviewView: View {
                     .frame(maxWidth: .infinity)
                     .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
                 } else {
+                    // Keep the complete VIP login page visible on every cold launch.
+                    // A saved key is verified while this screen remains on display.
                     VStack(alignment: .leading, spacing: 12) {
                         Text("LICENSE KEY")
                             .font(.caption.bold())
@@ -426,6 +415,7 @@ private struct VIPLoginPreviewView: View {
                             .padding(16)
                             .background(.white, in: RoundedRectangle(cornerRadius: 13))
                             .foregroundStyle(.black)
+                            .disabled(isCheckingSavedKey)
 
                         Button(action: activate) {
                             Text("ACTIVATE LICENSE")
@@ -435,6 +425,8 @@ private struct VIPLoginPreviewView: View {
                                 .background(Color.blue, in: RoundedRectangle(cornerRadius: 13))
                                 .foregroundStyle(.white)
                         }
+                        .disabled(isCheckingSavedKey)
+                        .opacity(isCheckingSavedKey ? 0.55 : 1)
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(.footnote)
@@ -451,6 +443,16 @@ private struct VIPLoginPreviewView: View {
                             .frame(maxWidth: .infinity)
                             .padding(15)
                             .overlay(RoundedRectangle(cornerRadius: 13).stroke(.white.opacity(0.35)))
+                    }
+
+                    if isCheckingSavedKey {
+                        HStack(spacing: 10) {
+                            ProgressView().tint(.white)
+                            Text("Checking saved license…")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                        .padding(.top, 2)
                     }
                 }
 
@@ -478,9 +480,9 @@ private struct VIPLoginPreviewView: View {
             .padding(.vertical, 30)
         }
         .onAppear {
-            // Local preview only: wait briefly, then auto-check the previously
+            // Local preview only: keep the login page visible briefly, then auto-check the previously
             // saved demo key. Production verification must use a server API.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
                 let stored = savedLicenseKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if !isMaintenanceEnabled && stored == demoKey {
                     isAuthenticated = true
