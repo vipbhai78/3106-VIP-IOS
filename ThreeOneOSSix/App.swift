@@ -15,6 +15,7 @@ struct ThreeOneOSSixApp: App {
     @State private var updateOffer: AppUpdateChecker.Offer?
     @State private var configImportError: String?
     @AppStorage("vip.demo.authenticated") private var vipAuthenticated = false
+    @AppStorage("vip.demo.savedLicenseKey") private var vipSavedLicenseKey = ""
     @AppStorage("vip.demo.maintenance") private var vipMaintenance = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -24,6 +25,9 @@ struct ThreeOneOSSixApp: App {
         // reads UserDefaults on every access, so a write here is visible to
         // the first render. A stored value always wins — see seedIfNeeded.
         LanguageResolver.seedIfNeeded()
+        // Always show the VIP gate on a fresh app launch. The saved demo key
+        // is checked by VIPLoginPreviewView before continuing.
+        UserDefaults.standard.set(false, forKey: "vip.demo.authenticated")
         setupLogCapture()
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -122,6 +126,7 @@ struct ThreeOneOSSixApp: App {
                 } else {
                     VIPLoginPreviewView(
                         isAuthenticated: $vipAuthenticated,
+                        savedLicenseKey: $vipSavedLicenseKey,
                         isMaintenanceEnabled: $vipMaintenance
                     )
                 }
@@ -329,9 +334,11 @@ class AppState: ObservableObject {
 /// Replace VIPDemoLicenseService with an HTTPS backend before distribution.
 private struct VIPLoginPreviewView: View {
     @Binding var isAuthenticated: Bool
+    @Binding var savedLicenseKey: String
     @Binding var isMaintenanceEnabled: Bool
     @State private var licenseKey = ""
     @State private var errorMessage: String?
+    @State private var isCheckingSavedKey = true
 
     private let demoKey = "VIP-DEMO-2026"
     private let telegramURL = URL(string: "https://t.me/viphacker999ofc")!
@@ -365,7 +372,20 @@ private struct VIPLoginPreviewView: View {
                     .tracking(2)
                     .foregroundStyle(.white.opacity(0.65))
 
-                if isMaintenanceEnabled {
+                if isCheckingSavedKey {
+                    VStack(spacing: 12) {
+                        ProgressView().tint(.white).scaleEffect(1.2)
+                        Text("VERIFYING LICENSE...")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                        Text("Please wait a moment")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity)
+                    .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
+                } else if isMaintenanceEnabled {
                     VStack(spacing: 12) {
                         Image(systemName: "wrench.and.screwdriver.fill")
                             .font(.system(size: 34))
@@ -443,6 +463,17 @@ private struct VIPLoginPreviewView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 30)
         }
+        .onAppear {
+            // Local preview only: wait briefly, then auto-check the previously
+            // saved demo key. Production verification must use a server API.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                let stored = savedLicenseKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                if !isMaintenanceEnabled && stored == demoKey {
+                    isAuthenticated = true
+                }
+                isCheckingSavedKey = false
+            }
+        }
     }
 
     private func activate() {
@@ -452,6 +483,7 @@ private struct VIPLoginPreviewView: View {
             return
         }
         errorMessage = nil
+        savedLicenseKey = demoKey
         isAuthenticated = true
     }
 }
