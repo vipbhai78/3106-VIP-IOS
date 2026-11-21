@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Security
 
 @main
 struct ThreeOneOSSixApp: App {
@@ -343,9 +344,78 @@ class AppState: ObservableObject {
 }
 
 
-/// Local-only preview gate. This is intentionally NOT production security:
-/// the demo key and maintenance switch live in the app and can be bypassed.
-/// Replace VIPDemoLicenseService with an HTTPS backend before distribution.
+/// Production VIP gate. License verification is performed by the HTTPS API
+/// used by the Telegram license bot; no demo key or client-side API secret is used.
+private enum VIPAPIConfiguration {
+    // Replace this with the public HTTPS URL of the deployed FastAPI service.
+    static let baseURL = "http://192.168.1.6:8000"
+}
+
+private struct VIPVerifyResponse: Decodable {
+    let ok: Bool
+    let reason: String?
+    let expires_at: Int?
+    let remaining_seconds: Int?
+    let telegram_link: String?
+}
+
+private enum VIPDeviceIdentity {
+    static func stableID() -> String {
+        let service = Bundle.main.bundleIdentifier ?? "com.qingtang.3106"
+        let account = "vip-license-device-id"
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: CFTypeRef?
+        if SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+           let data = result as? Data,
+           let value = String(data: data, encoding: .utf8) {
+            return value
+        }
+
+        let value = UUID().uuidString
+        var insert = query
+        insert.removeValue(forKey: kSecReturnData as String)
+        insert.removeValue(forKey: kSecMatchLimit as String)
+        insert[kSecValueData as String] = value.data(using: .utf8)
+        SecItemAdd(insert as CFDictionary, nil)
+        return value
+    }
+}
+
+private enum VIPLicenseService {
+    static func verify(key: String) async throws -> VIPVerifyResponse {
+        guard !VIPAPIConfiguration.baseURL.contains("CHANGE-ME"),
+              let url = URL(string: VIPAPIConfiguration.baseURL + "/v1/verify") else {
+            throw NSError(domain: "VIPLicense", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "The license server URL has not been configured yet."
+            ])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload = [
+            "license_key": key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+            "device_id": VIPDeviceIdentity.stableID()
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NSError(domain: "VIPLicense", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "License server error. Please try again later."
+            ])
+        }
+        return try JSONDecoder().decode(VIPVerifyResponse.self, from: data)
+    }
+}
+
 private struct VIPLoginPreviewView: View {
     @Binding var isAuthenticated: Bool
     @Binding var savedLicenseKey: String
@@ -353,9 +423,9 @@ private struct VIPLoginPreviewView: View {
     @State private var licenseKey = ""
     @State private var errorMessage: String?
     @State private var isCheckingSavedKey = true
-
-    private let demoKey = "VIP-DEMO-2026"
-    private let telegramURL = URL(string: "https://t.me/viphacker999ofc")!
+    @State private var isRequesting = false
+    @State private var didCheckSavedKey = false
+    @State private var joinURL = URL(string: "https://t.me/viphacker999ofc")!
 
     var body: some View {
         ZStack {
@@ -396,14 +466,14 @@ private struct VIPLoginPreviewView: View {
                             .multilineTextAlignment(.center)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.75))
+                        Button("Check Again") { Task { await checkSavedOrEnteredKey() } }
+                            .buttonStyle(.borderedProminent)
                     }
                     .foregroundStyle(.white)
                     .padding(24)
                     .frame(maxWidth: .infinity)
                     .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
                 } else {
-                    // Keep the complete VIP login page visible on every cold launch.
-                    // A saved key is verified while this screen remains on display.
                     VStack(alignment: .leading, spacing: 12) {
                         Text("LICENSE KEY")
                             .font(.caption.bold())
@@ -415,18 +485,22 @@ private struct VIPLoginPreviewView: View {
                             .padding(16)
                             .background(.white, in: RoundedRectangle(cornerRadius: 13))
                             .foregroundStyle(.black)
-                            .disabled(isCheckingSavedKey)
+                            .disabled(isRequesting || isCheckingSavedKey)
 
-                        Button(action: activate) {
-                            Text("ACTIVATE LICENSE")
-                                .font(.headline.bold())
-                                .frame(maxWidth: .infinity)
-                                .padding(16)
-                                .background(Color.blue, in: RoundedRectangle(cornerRadius: 13))
-                                .foregroundStyle(.white)
+                        Button(action: { Task { await activate() } }) {
+                            HStack {
+                                if isRequesting || isCheckingSavedKey { ProgressView().tint(.white) }
+                                Text("ACTIVATE LICENSE")
+                                    .font(.headline.bold())
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(16)
+                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 13))
+                            .foregroundStyle(.white)
                         }
-                        .disabled(isCheckingSavedKey)
-                        .opacity(isCheckingSavedKey ? 0.55 : 1)
+                        .disabled(isRequesting || isCheckingSavedKey)
+                        .opacity((isRequesting || isCheckingSavedKey) ? 0.55 : 1)
+
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(.footnote)
@@ -436,7 +510,7 @@ private struct VIPLoginPreviewView: View {
                     .padding(18)
                     .background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 20))
 
-                    Link(destination: telegramURL) {
+                    Link(destination: joinURL) {
                         Label("Join Telegram Channel", systemImage: "paperplane.fill")
                             .font(.subheadline.bold())
                             .foregroundStyle(.white)
@@ -456,22 +530,8 @@ private struct VIPLoginPreviewView: View {
                     }
                 }
 
-                #if DEBUG
-                DisclosureGroup("Developer Preview Controls") {
-                    Toggle("Simulate maintenance mode", isOn: $isMaintenanceEnabled)
-                        .tint(.orange)
-                        .foregroundStyle(.white)
-                        .padding(.top, 8)
-                    Text("Demo key: VIP-DEMO-2026")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-                .tint(.white)
-                .foregroundStyle(.white.opacity(0.9))
-                #endif
-
                 Spacer()
-                Text("VIP LICENSE SYSTEM • PREVIEW")
+                Text("VIP LICENSE SYSTEM")
                     .font(.caption2)
                     .tracking(1.5)
                     .foregroundStyle(.white.opacity(0.45))
@@ -480,26 +540,69 @@ private struct VIPLoginPreviewView: View {
             .padding(.vertical, 30)
         }
         .onAppear {
-            // Local preview only: keep the login page visible briefly, then auto-check the previously
-            // saved demo key. Production verification must use a server API.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-                let stored = savedLicenseKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-                if !isMaintenanceEnabled && stored == demoKey {
-                    isAuthenticated = true
-                }
-                isCheckingSavedKey = false
-            }
+            guard !didCheckSavedKey else { return }
+            didCheckSavedKey = true
+            isMaintenanceEnabled = false
+            Task { await checkSavedOrEnteredKey() }
         }
     }
 
-    private func activate() {
-        guard !isMaintenanceEnabled else { return }
-        guard licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == demoKey else {
-            errorMessage = "Invalid demo key. Please check and try again."
+    @MainActor
+    private func checkSavedOrEnteredKey() async {
+        let stored = savedLicenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !stored.isEmpty else {
+            isCheckingSavedKey = false
             return
         }
+        await verify(stored, isSavedKey: true)
+    }
+
+    @MainActor
+    private func activate() async {
+        let entered = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !entered.isEmpty else {
+            errorMessage = "Please enter your license key."
+            return
+        }
+        await verify(entered, isSavedKey: false)
+    }
+
+    @MainActor
+    private func verify(_ key: String, isSavedKey: Bool) async {
+        isRequesting = true
         errorMessage = nil
-        savedLicenseKey = demoKey
-        isAuthenticated = true
+        isMaintenanceEnabled = false
+        defer {
+            isRequesting = false
+            isCheckingSavedKey = false
+        }
+        do {
+            let result = try await VIPLicenseService.verify(key: key)
+            if result.ok {
+                savedLicenseKey = key.uppercased()
+                if let link = result.telegram_link, let url = URL(string: link), url.scheme == "https" {
+                    joinURL = url
+                }
+                isAuthenticated = true
+            } else if result.reason == "maintenance" {
+                isMaintenanceEnabled = true
+                errorMessage = nil
+            } else {
+                if isSavedKey { savedLicenseKey = "" }
+                errorMessage = Self.message(for: result.reason)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private static func message(for reason: String?) -> String {
+        switch reason {
+        case "invalid_key": return "Invalid license key. Please check and try again."
+        case "expired": return "This license key has expired."
+        case "banned": return "This license key has been disabled."
+        case "device_mismatch": return "This key is already activated on another device."
+        default: return "License verification failed. Please try again."
+        }
     }
 }
