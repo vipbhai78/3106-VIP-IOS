@@ -14,6 +14,8 @@ struct ThreeOneOSSixApp: App {
     @State private var showAttribution = false
     @State private var updateOffer: AppUpdateChecker.Offer?
     @State private var configImportError: String?
+    @AppStorage("vip.demo.authenticated") private var vipAuthenticated = false
+    @AppStorage("vip.demo.maintenance") private var vipMaintenance = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -86,6 +88,7 @@ struct ThreeOneOSSixApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                if vipAuthenticated {
                 ContentView()
                     .environmentObject(appState)
                     .environmentObject(patchDraftCoordinator)
@@ -116,8 +119,14 @@ struct ThreeOneOSSixApp: App {
                     )
                     .zIndex(1)
                 }
+                } else {
+                    VIPLoginPreviewView(
+                        isAuthenticated: $vipAuthenticated,
+                        isMaintenanceEnabled: $vipMaintenance
+                    )
+                }
             }
-            .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding)
+            .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding && vipAuthenticated)
             .sheet(isPresented: $showAttribution) {
                 DisplayAttributionSheet()
             }
@@ -311,5 +320,138 @@ class AppState: ObservableObject {
                 }
             }
         }
+    }
+}
+
+
+/// Local-only preview gate. This is intentionally NOT production security:
+/// the demo key and maintenance switch live in the app and can be bypassed.
+/// Replace VIPDemoLicenseService with an HTTPS backend before distribution.
+private struct VIPLoginPreviewView: View {
+    @Binding var isAuthenticated: Bool
+    @Binding var isMaintenanceEnabled: Bool
+    @State private var licenseKey = ""
+    @State private var errorMessage: String?
+
+    private let demoKey = "VIP-DEMO-2026"
+    private let telegramURL = URL(string: "https://t.me/viphacker999ofc")!
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.035, green: 0.055, blue: 0.13),
+                         Color(red: 0.10, green: 0.12, blue: 0.25)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                Spacer()
+                ZStack {
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(Color.white.opacity(0.10))
+                        .frame(width: 82, height: 82)
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 38, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                Text("VIP ACCESS")
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .tracking(2)
+                    .foregroundStyle(.white)
+                Text("SECURE LICENSE VERIFICATION")
+                    .font(.system(size: 11, weight: .medium))
+                    .tracking(2)
+                    .foregroundStyle(.white.opacity(0.65))
+
+                if isMaintenanceEnabled {
+                    VStack(spacing: 12) {
+                        Image(systemName: "wrench.and.screwdriver.fill")
+                            .font(.system(size: 34))
+                        Text("APP UNDER MAINTENANCE")
+                            .font(.headline.bold())
+                        Text("We are performing maintenance. Please try again later.")
+                            .multilineTextAlignment(.center)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(24)
+                    .frame(maxWidth: .infinity)
+                    .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("LICENSE KEY")
+                            .font(.caption.bold())
+                            .tracking(1.2)
+                            .foregroundStyle(.white.opacity(0.8))
+                        TextField("Enter your license key", text: $licenseKey)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .padding(16)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 13))
+                            .foregroundStyle(.black)
+
+                        Button(action: activate) {
+                            Text("ACTIVATE LICENSE")
+                                .font(.headline.bold())
+                                .frame(maxWidth: .infinity)
+                                .padding(16)
+                                .background(Color.blue, in: RoundedRectangle(cornerRadius: 13))
+                                .foregroundStyle(.white)
+                        }
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .padding(18)
+                    .background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 20))
+
+                    Link(destination: telegramURL) {
+                        Label("Join Telegram Channel", systemImage: "paperplane.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(15)
+                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(.white.opacity(0.35)))
+                    }
+                }
+
+                #if DEBUG
+                DisclosureGroup("Developer Preview Controls") {
+                    Toggle("Simulate maintenance mode", isOn: $isMaintenanceEnabled)
+                        .tint(.orange)
+                        .foregroundStyle(.white)
+                        .padding(.top, 8)
+                    Text("Demo key: VIP-DEMO-2026")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .tint(.white)
+                .foregroundStyle(.white.opacity(0.9))
+                #endif
+
+                Spacer()
+                Text("VIP LICENSE SYSTEM • PREVIEW")
+                    .font(.caption2)
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 30)
+        }
+    }
+
+    private func activate() {
+        guard !isMaintenanceEnabled else { return }
+        guard licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == demoKey else {
+            errorMessage = "Invalid demo key. Please check and try again."
+            return
+        }
+        errorMessage = nil
+        isAuthenticated = true
     }
 }
