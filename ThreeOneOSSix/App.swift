@@ -348,7 +348,7 @@ class AppState: ObservableObject {
 /// used by the Telegram license bot; no demo key or client-side API secret is used.
 private enum VIPAPIConfiguration {
     // Replace this with the public HTTPS URL of the deployed FastAPI service.
-    static let baseURL = "http://192.168.1.6:8000"
+    static let baseURL = "https://api.panelreseller.shop"
 }
 
 private struct VIPVerifyResponse: Decodable {
