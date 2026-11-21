@@ -11,6 +11,7 @@ struct ThreeOneOSSixApp: App {
     @StateObject private var migrationTaskCenter = MigrationTaskCenter()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @State private var showOnboarding = OnboardingStore.shouldShow()
+    @State private var vipLaunchResolved = false
     @State private var showAttribution = false
     @State private var updateOffer: AppUpdateChecker.Offer?
     @State private var configImportError: String?
@@ -25,9 +26,9 @@ struct ThreeOneOSSixApp: App {
         // reads UserDefaults on every access, so a write here is visible to
         // the first render. A stored value always wins — see seedIfNeeded.
         LanguageResolver.seedIfNeeded()
-        // Always show the VIP gate on a fresh app launch. The saved demo key
-        // is checked by VIPLoginPreviewView before continuing.
-        UserDefaults.standard.set(false, forKey: "vip.demo.authenticated")
+        // VIP authentication is reset from the root view's first appearance.
+        // A separate launch gate prevents SwiftUI from briefly rendering the
+        // authenticated ContentView while @AppStorage is being initialized.
         setupLogCapture()
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -92,7 +93,13 @@ struct ThreeOneOSSixApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if vipAuthenticated {
+                if !vipLaunchResolved {
+                    ZStack {
+                        Color(red: 0.035, green: 0.055, blue: 0.13).ignoresSafeArea()
+                        ProgressView()
+                            .tint(.white)
+                    }
+                } else if vipAuthenticated {
                 ContentView()
                     .environmentObject(appState)
                     .environmentObject(patchDraftCoordinator)
@@ -159,7 +166,14 @@ struct ThreeOneOSSixApp: App {
                 )
             }
             .onAppear {
-                if !showOnboarding {
+                if !vipLaunchResolved {
+                    // Force the VIP screen to be the first app screen on every
+                    // cold launch. VIPLoginPreviewView then checks the saved
+                    // demo key and advances automatically when it matches.
+                    vipAuthenticated = false
+                    vipLaunchResolved = true
+                }
+                if !showOnboarding && vipAuthenticated {
                     appState.detectSupport()
                     checkForUpdate()
                 }
@@ -167,7 +181,7 @@ struct ThreeOneOSSixApp: App {
                 importSharedConfigPackages()
             }
             .onChange(of: scenePhase) { phase in
-                guard phase == .active, !showOnboarding else { return }
+                guard phase == .active, !showOnboarding, vipAuthenticated else { return }
                 appState.detectSupport()
                 // 3.2.4: also probe for updates on foreground switches —
                 // the cold-start check alone misses releases published
