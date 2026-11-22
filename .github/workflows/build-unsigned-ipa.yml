@@ -65,7 +65,7 @@ jobs:
         run: |
           APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -type d -name "*.app" -print -quit)
           EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
-          SENTINEL=$(grep -rhoE '"[A-Za-z0-9_./=-]{16,}"' ThreeOneOSSix --include='*.swift' \\
+          SENTINEL=$(grep -rhoE '"[A-Za-z0-9_./=-]{16,}"' ThreeOneOSSix --include='*.swift' \
             | head -1 | tr -d '"')
           if [[ -z "$SENTINEL" ]]; then
             echo "FAIL: no >=16 byte source sentinel found" >&2
