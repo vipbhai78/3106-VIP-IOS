@@ -35,7 +35,7 @@ struct ThreeOneOSSixApp: App {
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         let cpu = DeviceCPU.cpuFamily.map { String(format: "0x%X", $0) } ?? "unknown"
-        log("app: 3106 \(appVersion) (\(appBuild)) launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName) cpu=\(cpu)")
+        log("app: Vexora Pro \(appVersion) (\(appBuild)) launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName) cpu=\(cpu)")
         SandboxAccess.prepare()
         TempSpaceRegistry.purgeExpired()
     }
@@ -121,7 +121,6 @@ struct ThreeOneOSSixApp: App {
                             showOnboarding = false
                         }
                         appState.detectSupport()
-                        checkForUpdate()
                     }
                     .environment(\.appLanguage, language)
                     .environment(\.locale, language.locale)
@@ -178,7 +177,6 @@ struct ThreeOneOSSixApp: App {
                 }
                 if !showOnboarding && vipAuthenticated {
                     appState.detectSupport()
-                    checkForUpdate()
                 }
                 migrationTaskCenter.refreshPendingResumes()
                 importSharedConfigPackages()
@@ -186,11 +184,8 @@ struct ThreeOneOSSixApp: App {
             .onChange(of: scenePhase) { phase in
                 guard phase == .active, !showOnboarding, vipAuthenticated else { return }
                 appState.detectSupport()
-                // 3.2.4: also probe for updates on foreground switches —
-                // the cold-start check alone misses releases published
-                // while the app idles in the background. Throttled to one
-                // probe per 30 minutes; failures stay silent here.
-                checkForUpdateThrottled()
+                // Vexora Pro distribution: upstream release checks are disabled.
+                // Maintenance and license verification remain independent.
             }
             .onOpenURL { url in
                 // Config backup packages (.3106cfg) route to the migration

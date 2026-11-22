@@ -185,9 +185,12 @@ struct PatchProjectsView: View {
                         if store.isBusy || isImportingWallpapers {
                             ProgressView()
                         } else {
-                            Image(systemName: "plus")
+                            Text("ADD")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .tracking(1.0)
                         }
                     }
+                    .tint(Color(red: 0.78, green: 0.48, blue: 1.0))
                     .disabled(store.isBusy || isImportingWallpapers)
                     .accessibilityLabel(language.text("patch.add"))
                 }

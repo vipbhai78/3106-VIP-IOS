@@ -56,7 +56,7 @@ struct SettingsView: View {
                         AppLogo()
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("3106").font(.headline)
+                            Text("Vexora Pro").font(.headline)
                             Text(language.text("common.version", appVersion))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -128,36 +128,12 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Button {
-                        checkUpdateManually()
-                    } label: {
-                        HStack {
-                            Label(
-                                language.text("settings.check_update"),
-                                systemImage: "arrow.triangle.down.circle"
-                            )
-                            Spacer()
-                            if isCheckingUpdate {
-                                ProgressView().controlSize(.small)
-                            } else if let updateStatus {
-                                Text(updateStatus)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .disabled(isCheckingUpdate)
-
-                    if let updateURL {
-                        Link(destination: updateURL) {
-                            Label(language.text("update.open_github"), systemImage: "safari")
-                                .foregroundStyle(AppTheme.accent)
-                        }
-                    }
+                    Label("Vexora Pro updates are managed by this build.", systemImage: "checkmark.shield")
+                        .foregroundStyle(AppTheme.accent)
                 } header: {
-                    Text(language.text("settings.update_header"))
+                    Text("App Updates")
                 } footer: {
-                    Text(language.text("settings.update_footer"))
+                    Text("Automatic checks for upstream project releases are disabled. License and maintenance services are unchanged.")
                 }
 
                 Section {
@@ -256,6 +232,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            .tint(Color(red: 0.78, green: 0.48, blue: 1.0))
             .tint(AppTheme.accent)
             .navigationTitle(language.text("settings.title"))
             .navigationBarTitleDisplayMode(.inline)

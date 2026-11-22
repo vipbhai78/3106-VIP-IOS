@@ -181,7 +181,7 @@ struct QuickPatchSlotsView: View {
                             .lineLimit(1)
                     }
                     .font(.caption)
-                    .foregroundStyle(selected == nil ? .orange : .white.opacity(0.7))
+                    .foregroundStyle(Color(red: 0.78, green: 0.48, blue: 1.0))
                 }
                 .disabled(workingSlot == index)
             }
