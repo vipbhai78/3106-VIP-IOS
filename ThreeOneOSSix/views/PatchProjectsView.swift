@@ -22,6 +22,7 @@ struct PatchProjectsView: View {
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
+    @AppStorage("vip.license.expires_at") private var licenseExpiresAt = 0
     @State private var showCreate = false
     @State private var showImporter = false
     @State private var showWallpaperImporter = false
@@ -94,6 +95,58 @@ struct PatchProjectsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if licenseExpiresAt > 0 {
+                    let expiryDate = Date(timeIntervalSince1970: TimeInterval(licenseExpiresAt))
+                    HStack(spacing: 14) {
+                        Image(systemName: "crown.fill")
+                            .font(.title2)
+                            .foregroundStyle(Color(red: 0.72, green: 0.55, blue: 1.0))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Premium Access")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text("License active")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text("Expires in")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.7))
+                            Group {
+                                if expiryDate > Date() {
+                                    Text(expiryDate, style: .timer)
+                                } else {
+                                    Text("Expired")
+                                }
+                            }
+                            .font(.system(.subheadline, design: .rounded).weight(.bold))
+                            .monospacedDigit()
+                            .foregroundStyle(Color(red: 0.82, green: 0.70, blue: 1.0))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.16, green: 0.12, blue: 0.32),
+                                Color(red: 0.09, green: 0.11, blue: 0.23)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 18)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.purple.opacity(0.45), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
+                }
                 AppSearchField(
                     text: $searchText,
                     prompt: language.text("installed.search"),
@@ -159,6 +212,8 @@ struct PatchProjectsView: View {
             }
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
+            .tint(Color(red: 0.66, green: 0.48, blue: 1.0))
+            .preferredColorScheme(.dark)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {

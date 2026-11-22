@@ -17,7 +17,7 @@ enum AppSection: Int, CaseIterable, Identifiable {
 extension AppSection {
     var titleKey: String {
         switch self {
-        case .home: return "tab.features"
+        case .home: return "tab.installed"
         case .new: return "tab.new"
         case .sources: return "tab.sources"
         case .installed: return "tab.installed"
@@ -31,7 +31,7 @@ extension AppSection {
 
     var systemImage: String {
         switch self {
-        case .home: return "square.grid.2x2.fill"
+        case .home: return "tray.full.fill"
         case .new: return "clock.fill"
         case .sources: return "shippingbox.fill"
         case .installed: return "tray.full.fill"

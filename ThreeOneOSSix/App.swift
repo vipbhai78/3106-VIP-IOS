@@ -19,6 +19,7 @@ struct ThreeOneOSSixApp: App {
     @AppStorage("vip.demo.authenticated") private var vipAuthenticated = false
     @AppStorage("vip.demo.savedLicenseKey") private var vipSavedLicenseKey = ""
     @AppStorage("vip.demo.maintenance") private var vipMaintenance = false
+    @AppStorage("vip.license.expires_at") private var vipLicenseExpiresAt = 0
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -135,7 +136,8 @@ struct ThreeOneOSSixApp: App {
                     VIPLoginPreviewView(
                         isAuthenticated: $vipAuthenticated,
                         savedLicenseKey: $vipSavedLicenseKey,
-                        isMaintenanceEnabled: $vipMaintenance
+                        isMaintenanceEnabled: $vipMaintenance,
+                        licenseExpiresAt: $vipLicenseExpiresAt
                     )
                 }
             }
@@ -420,6 +422,7 @@ private struct VIPLoginPreviewView: View {
     @Binding var isAuthenticated: Bool
     @Binding var savedLicenseKey: String
     @Binding var isMaintenanceEnabled: Bool
+    @Binding var licenseExpiresAt: Int
     @State private var licenseKey = ""
     @State private var errorMessage: String?
     @State private var isCheckingSavedKey = true
@@ -580,6 +583,7 @@ private struct VIPLoginPreviewView: View {
             let result = try await VIPLicenseService.verify(key: key)
             if result.ok {
                 savedLicenseKey = key.uppercased()
+                licenseExpiresAt = result.expires_at ?? 0
                 if let link = result.telegram_link, let url = URL(string: link), url.scheme == "https" {
                     joinURL = url
                 }

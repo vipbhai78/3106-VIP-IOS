@@ -161,10 +161,7 @@ struct ContentView: View {
     private func sectionContent(_ section: AppSection) -> some View {
         switch section {
         case .home:
-            FeatureHubView(
-                onSelectTab: { section in
-                    tabNavigation.select(section.rawValue)
-                },
+            PatchProjectsView(
                 onOpenSettings: openSettings,
                 onOpenLogs: openLogs
             )
