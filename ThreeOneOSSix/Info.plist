@@ -66,11 +66,11 @@
 	<key>MinimumOSVersion</key>
 	<string>16.0</string>
 	<key>NSDocumentsFolderUsageDescription</key>
-	<string>3106 needs access to documents.</string>
+	<string>Vexora Pro needs access to documents.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>3106 uses the local network to transfer files to and from this device over Wi-Fi.</string>
+	<string>Vexora Pro uses the local network to transfer files to and from this device over Wi-Fi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>3106 needs access to photos for wallpaper customization.</string>
+	<string>Vexora Pro needs access to photos for wallpaper customization.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

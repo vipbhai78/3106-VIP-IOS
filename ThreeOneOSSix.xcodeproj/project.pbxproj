@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		QPATCH001 /* QuickPatchSlotsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = QPATCH002; };
+		VEXORA001 /* VexoraBrandAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VEXORA002; };
+		VEXORA003 /* VexoraProLoop.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = VEXORA004; };
 
 		3105A200 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A020; };
 		3105A201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A021; };
@@ -185,6 +187,8 @@
 
 /* Begin PBXFileReference section */
 		QPATCH002 /* QuickPatchSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickPatchSlotsView.swift; sourceTree = "<group>"; };
+		VEXORA002 /* VexoraBrandAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VexoraBrandAnimationView.swift; sourceTree = "<group>"; };
+		VEXORA004 /* VexoraProLoop.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = VexoraProLoop.mp4; sourceTree = "<group>"; };
 
 		3105A010 /* 3106.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "3106.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3105A020 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
@@ -415,6 +419,7 @@
 				3106W032 /* ThreeOneOSSix.entitlements */,
 				3105A120 /* Localizable.strings */,
 				3105A031 /* Assets.xcassets */,
+				VEXORA004 /* VexoraProLoop.mp4 */,
 			);
 			path = ThreeOneOSSix;
 			sourceTree = "<group>";
@@ -454,6 +459,7 @@
 				3105I101 /* FilesTabSwitcherView.swift */,
 				3105B121 /* PatchProjectsView.swift */,
 				QPATCH002 /* QuickPatchSlotsView.swift */,
+				VEXORA002 /* VexoraBrandAnimationView.swift */,
 				3105B122 /* PatchProjectEditorView.swift */,
 				3105C102 /* FolderPatchSelectionView.swift */,
 				3105E101 /* CleanerView.swift */,
@@ -697,6 +703,7 @@
 			files = (
 				3105A211,
 				3105A228,
+				VEXORA003,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -742,6 +749,7 @@
 				3105B220,
 				3105B221,
 				QPATCH001,
+				VEXORA001,
 				3105B222,
 				3105C200,
 				3105C201,

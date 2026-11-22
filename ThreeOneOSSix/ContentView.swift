@@ -148,7 +148,7 @@ struct ContentView: View {
                     )
                 }
             }
-            .navigationTitle("3106")
+            .navigationTitle("Vexora Pro")
             .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
         } detail: {
             sectionContent(selectedVisibleSection)

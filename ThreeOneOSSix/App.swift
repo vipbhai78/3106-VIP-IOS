@@ -433,8 +433,8 @@ private struct VIPLoginPreviewView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(red: 0.035, green: 0.055, blue: 0.13),
-                         Color(red: 0.10, green: 0.12, blue: 0.25)],
+                colors: [Color(red: 0.012, green: 0.012, blue: 0.035),
+                         Color(red: 0.055, green: 0.025, blue: 0.12)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -444,16 +444,18 @@ private struct VIPLoginPreviewView: View {
                 Spacer()
                 ZStack {
                     RoundedRectangle(cornerRadius: 25)
-                        .fill(Color.white.opacity(0.10))
-                        .frame(width: 82, height: 82)
+                        .fill(Color.black.opacity(0.72))
+                        .overlay(RoundedRectangle(cornerRadius: 25).stroke(Color.purple.opacity(0.8), lineWidth: 1.5))
+                        .shadow(color: .purple.opacity(0.45), radius: 22)
+                        .frame(width: 92, height: 92)
                     Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 38, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.78, green: 0.48, blue: 1.0))
                 }
-                Text("VIP ACCESS")
+                Text("Vexora Pro")
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .tracking(2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LinearGradient(colors: [.white, Color(red: 0.78, green: 0.48, blue: 1.0)], startPoint: .leading, endPoint: .trailing))
                 Text("SECURE LICENSE VERIFICATION")
                     .font(.system(size: 11, weight: .medium))
                     .tracking(2)
@@ -498,7 +500,7 @@ private struct VIPLoginPreviewView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(16)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 13))
+                            .background(LinearGradient(colors: [Color(red: 0.72, green: 0.22, blue: 1.0), Color(red: 0.36, green: 0.08, blue: 0.82)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 13))
                             .foregroundStyle(.white)
                         }
                         .disabled(isRequesting || isCheckingSavedKey)
@@ -511,7 +513,8 @@ private struct VIPLoginPreviewView: View {
                         }
                     }
                     .padding(18)
-                    .background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 20))
+                    .background(LinearGradient(colors: [Color(red: 0.11, green: 0.09, blue: 0.19), Color(red: 0.045, green: 0.04, blue: 0.085)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.purple.opacity(0.42), lineWidth: 1))
 
                     Link(destination: joinURL) {
                         Label("Join Telegram Channel", systemImage: "paperplane.fill")
@@ -519,7 +522,7 @@ private struct VIPLoginPreviewView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(15)
-                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(.white.opacity(0.35)))
+                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.purple.opacity(0.65), lineWidth: 1))
                     }
 
                     if isCheckingSavedKey {
@@ -534,7 +537,7 @@ private struct VIPLoginPreviewView: View {
                 }
 
                 Spacer()
-                Text("VIP LICENSE SYSTEM")
+                Text("VEXORA PRO")
                     .font(.caption2)
                     .tracking(1.5)
                     .foregroundStyle(.white.opacity(0.45))

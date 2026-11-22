@@ -151,68 +151,10 @@ struct PatchProjectsView: View {
                     .environmentObject(store)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
-                AppSearchField(
-                    text: $searchText,
-                    prompt: language.text("installed.search"),
-                    clearLabel: language.text("common.clear")
-                )
-                Divider()
-                List {
-                    if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
-                        loadingState
-                            .listRowSeparator(.hidden)
-                    } else if !hasLocalContent {
-                        emptyState
-                            .listRowSeparator(.hidden)
-                    } else if !hasSearchResults && !store.isBusy {
-                        searchEmptyState
-                            .listRowSeparator(.hidden)
-                    } else {
-                        if !filteredItems.isEmpty {
-                            Section(language.text("patch.title")) {
-                                ForEach(filteredItems) { item in
-                                    itemRow(item)
-                                }
-                                .onDelete { offsets in
-                                    offsets.map { filteredItems[$0] }.forEach(store.delete)
-                                }
-                            }
-                        }
-                        if !filteredWallpaperPackages.isEmpty {
-                            Section(language.text("tab.wallpapers")) {
-                                ForEach(filteredWallpaperPackages) { package in
-                                    NavigationLink {
-                                        InstalledWallpaperPackageDetailView(
-                                            package: package,
-                                            onApplied: reloadWallpaperPackages
-                                        )
-                                    } label: {
-                                        wallpaperRow(package)
-                                    }
-                                    .swipeActions(
-                                        edge: .trailing,
-                                        allowsFullSwipe: false
-                                    ) {
-                                        Button(role: .destructive) {
-                                            wallpaperPendingDeletion = package
-                                        } label: {
-                                            Label(
-                                                language.text("common.delete"),
-                                                systemImage: "trash"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if cleanerEnabled {
-                        Section(language.text("repository.utilities")) {
-                            cleanerRow
-                        }
-                    }
-                }
-                .listStyle(.insetGrouped)
+                VexoraBrandAnimationView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
             }
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
