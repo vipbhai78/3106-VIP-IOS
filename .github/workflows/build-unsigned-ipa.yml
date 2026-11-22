@@ -34,14 +34,26 @@ jobs:
 
       - name: Package unsigned IPA
         run: |
-          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/3106.app"
-          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist")
-          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Info.plist")
-          mkdir Payload
+          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -type d -name "*.app" -print -quit)
+          if [[ -z "$APP" || ! -d "$APP" ]]; then
+            echo "FAIL: built .app bundle not found" >&2
+            ls -la "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" || true
+            exit 1
+          fi
+          INFO="$APP/Info.plist"
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ThreeOneOSSix/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$INFO" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ThreeOneOSSix/Info.plist)
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$INFO" 2>/dev/null || true)
+          if [[ -z "$EXECUTABLE" || ! -f "$APP/$EXECUTABLE" ]]; then
+            echo "FAIL: app executable missing (CFBundleExecutable=$EXECUTABLE)" >&2
+            ls -la "$APP" || true
+            exit 1
+          fi
+          mkdir -p Payload
           cp -R "$APP" Payload/
-          zip -qry "3106-${VERSION}-unsigned.ipa" Payload
-          shasum -a 256 "3106-${VERSION}-unsigned.ipa"
-          echo "IPA=3106-${VERSION}-unsigned.ipa" >> "$GITHUB_ENV"
+          zip -qry "Vexora-Pro-${VERSION}-unsigned.ipa" Payload
+          shasum -a 256 "Vexora-Pro-${VERSION}-unsigned.ipa"
+          echo "IPA=Vexora-Pro-${VERSION}-unsigned.ipa" >> "$GITHUB_ENV"
           echo "IPA_VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "IPA_BUILD=${BUILD}" >> "$GITHUB_ENV"
 
@@ -51,14 +63,15 @@ jobs:
       # not reliable. Asserts the artifact was built from this source tree.
       - name: Verify artifact matches source
         run: |
-          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/3106.app"
-          SENTINEL=$(grep -rhoE '"[A-Za-z0-9_./=-]{16,}"' ThreeOneOSSix --include='*.swift' \
+          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -type d -name "*.app" -print -quit)
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
+          SENTINEL=$(grep -rhoE '"[A-Za-z0-9_./=-]{16,}"' ThreeOneOSSix --include='*.swift' \\
             | head -1 | tr -d '"')
           if [[ -z "$SENTINEL" ]]; then
             echo "FAIL: no >=16 byte source sentinel found" >&2
             exit 1
           fi
-          COUNT=$(strings "$APP/3106" | grep -cF "$SENTINEL" || true)
+          COUNT=$(strings "$APP/$EXECUTABLE" | grep -cF "$SENTINEL" || true)
           if [[ "$COUNT" -lt 1 ]]; then
             echo "FAIL: release artifact missing source sentinel '$SENTINEL'" >&2
             echo "The packaged binary does not match the current source tree." >&2
@@ -70,4 +83,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 3106-unsigned-ipa
-          path: "3106-*-unsigned.ipa"
+          path: "Vexora-Pro-*-unsigned.ipa"
