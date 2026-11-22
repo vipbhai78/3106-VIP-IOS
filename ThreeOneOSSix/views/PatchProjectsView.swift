@@ -147,6 +147,10 @@ struct PatchProjectsView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 8)
                 }
+                QuickPatchSlotsView()
+                    .environmentObject(store)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
                 AppSearchField(
                     text: $searchText,
                     prompt: language.text("installed.search"),
