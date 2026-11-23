@@ -638,22 +638,6 @@ struct PatchUnlockView: View {
     }
 }
 
-private struct PatchStorePresentationModifier: ViewModifier {
-    @ObservedObject var store: PatchProjectStore
-
-    func body(content: Content) -> some View {
-        content
-            .sheet(item: $store.passwordRequest, onDismiss: store.cancelUnlock) { request in
-                PatchUnlockView(store: store, request: request)
-            }
-    }
-}
-
-extension View {
-    func patchStorePresentation(_ store: PatchProjectStore) -> some View {
-        modifier(PatchStorePresentationModifier(store: store))
-    }
-}
 
 private struct PatchProjectDetailView: View {
     @Environment(\.appLanguage) private var language
