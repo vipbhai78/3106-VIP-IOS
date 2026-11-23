@@ -423,7 +423,7 @@ private struct VIPLoginPreviewView: View {
     @State private var isCheckingSavedKey = true
     @State private var isRequesting = false
     @State private var didCheckSavedKey = false
-    @State private var joinURL = URL(string: "https://t.me/viphacker999ofc")!
+    @State private var joinURL = URL(string: "https://t.me/VexoraPro_Updates")!
 
     var body: some View {
         ZStack {
@@ -582,9 +582,6 @@ private struct VIPLoginPreviewView: View {
             if result.ok {
                 savedLicenseKey = key.uppercased()
                 licenseExpiresAt = result.expires_at ?? 0
-                if let link = result.telegram_link, let url = URL(string: link), url.scheme == "https" {
-                    joinURL = url
-                }
                 isAuthenticated = true
             } else if result.reason == "maintenance" {
                 isMaintenanceEnabled = true

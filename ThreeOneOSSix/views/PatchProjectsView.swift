@@ -156,7 +156,7 @@ struct PatchProjectsView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 14)
             }
-            .navigationTitle(language.text("tab.installed"))
+            .navigationTitle("Features")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Color(red: 0.66, green: 0.48, blue: 1.0))
             .preferredColorScheme(.dark)
@@ -194,11 +194,6 @@ struct PatchProjectsView: View {
                     .disabled(store.isBusy || isImportingWallpapers)
                     .accessibilityLabel(language.text("patch.add"))
                 }
-                AppUtilityToolbar(
-                    language: language,
-                    onOpenSettings: onOpenSettings,
-                    onOpenLogs: onOpenLogs
-                )
             }
             .sheet(isPresented: $showImporter) {
                 FileDocumentPicker(
