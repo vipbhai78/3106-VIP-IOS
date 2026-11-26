@@ -348,12 +348,41 @@ private enum VIPAPIConfiguration {
     static let baseURL = "https://api.panelreseller.shop"
 }
 
+private struct VIPAppConfig: Decodable {
+    let maintenance: Bool?
+    let maintenance_message: String?
+    let maintenance_telegram_link: String?
+    let force_update_enabled: Bool?
+    let update_required: Bool?
+    let current_version: String?
+    let minimum_version: String?
+    let latest_version: String?
+    let update_url: String?
+    let update_message: String?
+
+    static let fallback = VIPAppConfig(
+        maintenance: false, maintenance_message: nil,
+        maintenance_telegram_link: nil, force_update_enabled: false,
+        update_required: false, current_version: nil,
+        minimum_version: nil, latest_version: nil,
+        update_url: nil, update_message: nil
+    )
+}
+
 private struct VIPVerifyResponse: Decodable {
     let ok: Bool
     let reason: String?
     let expires_at: Int?
     let remaining_seconds: Int?
     let telegram_link: String?
+    let maintenance_message: String?
+    let maintenance_telegram_link: String?
+    let force_update_enabled: Bool?
+    let update_required: Bool?
+    let minimum_version: String?
+    let latest_version: String?
+    let update_url: String?
+    let update_message: String?
 }
 
 private enum VIPDeviceIdentity {
@@ -385,6 +414,21 @@ private enum VIPDeviceIdentity {
 }
 
 private enum VIPLicenseService {
+    static func appConfig() async throws -> VIPAppConfig {
+        let version = AppInfo.appVersion.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? AppInfo.appVersion
+        guard let url = URL(string: VIPAPIConfiguration.baseURL + "/v1/app-config?app_version=\(version)") else {
+            throw NSError(domain: "VIPLicense", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid app configuration URL."])
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 12
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NSError(domain: "VIPLicense", code: 4, userInfo: [NSLocalizedDescriptionKey: "Unable to load app settings."])
+        }
+        return try JSONDecoder().decode(VIPAppConfig.self, from: data)
+    }
+
     static func verify(key: String) async throws -> VIPVerifyResponse {
         guard !VIPAPIConfiguration.baseURL.contains("CHANGE-ME"),
               let url = URL(string: VIPAPIConfiguration.baseURL + "/v1/verify") else {
@@ -399,7 +443,8 @@ private enum VIPLicenseService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let payload = [
             "license_key": key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
-            "device_id": VIPDeviceIdentity.stableID()
+            "device_id": VIPDeviceIdentity.stableID(),
+            "app_version": AppInfo.appVersion
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
@@ -424,6 +469,10 @@ private struct VIPLoginPreviewView: View {
     @State private var isRequesting = false
     @State private var didCheckSavedKey = false
     @State private var joinURL = URL(string: "https://t.me/VexoraPro_Updates")!
+    @State private var appConfig = VIPAppConfig.fallback
+    @State private var isForceUpdateRequired = false
+    @State private var forceUpdateMessage: String?
+    @State private var forceUpdateURL: URL?
 
     var body: some View {
         ZStack {
@@ -456,17 +505,41 @@ private struct VIPLoginPreviewView: View {
                     .tracking(2)
                     .foregroundStyle(.white.opacity(0.65))
 
-                if isMaintenanceEnabled {
+                if isForceUpdateRequired {
+                    VStack(spacing: 12) {
+                        Image(systemName: "arrow.down.circle.fill").font(.system(size: 36))
+                        Text("UPDATE REQUIRED").font(.headline.bold())
+                        Text(forceUpdateMessage ?? "Please install the latest version to continue.")
+                            .multilineTextAlignment(.center)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                        if let forceUpdateURL {
+                            Link(destination: forceUpdateURL) {
+                                Label("UPDATE NOW", systemImage: "arrow.down.to.line")
+                                    .font(.headline.bold()).foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity).padding(15)
+                                    .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                    }
+                    .foregroundStyle(.white).padding(24).frame(maxWidth: .infinity)
+                    .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
+                } else if isMaintenanceEnabled {
                     VStack(spacing: 12) {
                         Image(systemName: "wrench.and.screwdriver.fill")
                             .font(.system(size: 34))
                         Text("APP UNDER MAINTENANCE")
                             .font(.headline.bold())
-                        Text("We are performing maintenance. Please try again later.")
+                        Text(appConfig.maintenance_message ?? "We are performing maintenance. Please try again later.")
                             .multilineTextAlignment(.center)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.75))
-                        Button("Check Again") { Task { await checkSavedOrEnteredKey() } }
+                        if let link = URL(string: appConfig.maintenance_telegram_link ?? ""),
+                           ["https", "http"].contains(link.scheme?.lowercased() ?? "") {
+                            Link("Contact us on Telegram", destination: link)
+                                .font(.subheadline.bold()).tint(.white)
+                        }
+                        Button("Check Again") { Task { await refreshAppConfigAndContinue() } }
                             .buttonStyle(.borderedProminent)
                     }
                     .foregroundStyle(.white)
@@ -544,8 +617,36 @@ private struct VIPLoginPreviewView: View {
             guard !didCheckSavedKey else { return }
             didCheckSavedKey = true
             isMaintenanceEnabled = false
-            Task { await checkSavedOrEnteredKey() }
+            Task { await refreshAppConfigAndContinue() }
         }
+    }
+
+    @MainActor
+    private func refreshAppConfigAndContinue() async {
+        isCheckingSavedKey = true
+        do {
+            let config = try await VIPLicenseService.appConfig()
+            appConfig = config
+            if let link = URL(string: config.maintenance_telegram_link ?? ""),
+               ["https", "http"].contains(link.scheme?.lowercased() ?? "") {
+                joinURL = link
+            }
+            isMaintenanceEnabled = config.maintenance == true
+            isForceUpdateRequired = config.force_update_enabled == true && config.update_required == true
+            forceUpdateMessage = config.update_message
+            if let raw = config.update_url, let url = URL(string: raw),
+               ["https", "http"].contains(url.scheme?.lowercased() ?? "") {
+                forceUpdateURL = url
+            }
+        } catch {
+            // Keep the existing license flow available if the config endpoint is temporarily unreachable.
+            log("vip: app config fetch failed — \(error.localizedDescription)")
+        }
+        if isForceUpdateRequired || isMaintenanceEnabled {
+            isCheckingSavedKey = false
+            return
+        }
+        await checkSavedOrEnteredKey()
     }
 
     @MainActor
@@ -584,7 +685,22 @@ private struct VIPLoginPreviewView: View {
                 licenseExpiresAt = result.expires_at ?? 0
                 isAuthenticated = true
             } else if result.reason == "maintenance" {
+                appConfig = VIPAppConfig(
+                    maintenance: true,
+                    maintenance_message: result.maintenance_message,
+                    maintenance_telegram_link: result.maintenance_telegram_link,
+                    force_update_enabled: result.force_update_enabled,
+                    update_required: result.update_required,
+                    current_version: nil, minimum_version: result.minimum_version,
+                    latest_version: result.latest_version, update_url: result.update_url,
+                    update_message: result.update_message
+                )
                 isMaintenanceEnabled = true
+                errorMessage = nil
+            } else if result.reason == "update_required" {
+                isForceUpdateRequired = true
+                forceUpdateMessage = result.update_message
+                if let raw = result.update_url, let url = URL(string: raw) { forceUpdateURL = url }
                 errorMessage = nil
             } else {
                 if isSavedKey { savedLicenseKey = "" }
@@ -600,6 +716,7 @@ private struct VIPLoginPreviewView: View {
         case "invalid_key": return "Invalid license key. Please check and try again."
         case "expired": return "This license key has expired."
         case "banned": return "This license key has been disabled."
+        case "update_required": return "Please update the app to the required version."
         case "device_mismatch": return "This key is already activated on another device."
         default: return "License verification failed. Please try again."
         }
